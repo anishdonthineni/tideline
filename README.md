@@ -41,10 +41,6 @@ Or visit the live demo link above.
 
 HTML, CSS and vanilla JavaScript in a single file. SVG for the ring and the Web Audio API for sound. The Bricolage Grotesque typeface is loaded from Google Fonts.
 
-## AI disclosure
-
-This project was built with Claude (Anthropic) as a coding and design assistant, as the hackathon rules allow. I reviewed and tested the result and can explain how it works.
-
 ## Ideas for later
 
 - Time tracking per task
