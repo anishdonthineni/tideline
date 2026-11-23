@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tideline – Focus Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eaf0f5;--surface:#fff;--ink:#14213d;--muted:#5d6b82;--line:#d3dde8;--accent:#2f5bff;--accent-ink:#fff;--break:#e08a00;--ok:#1f9d6b;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1626;--surface:#16213a;--ink:#e8eefb;--muted:#93a1bd;--line:#26345a;--accent:#6b8bff;--accent-ink:#0e1626;--break:#f2a93b;--ok:#3fcf95;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e1626;--surface:#16213a;--ink:#e8eefb;--muted:#93a1bd;--line:#26345a;--accent:#6b8bff;--accent-ink:#0e1626;--break:#f2a93b;--ok:#3fcf95;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}
+main{max-width:1000px;margin:0 auto;padding:24px 16px 48px;display:grid;gap:20px;grid-template-columns:1.1fr 1fr}
+@media (max-width:760px){main{grid-template-columns:1fr}}
+header{grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+h1{margin:0;font-size:2.4rem;font-weight:800;letter-spacing:-.03em;text-decoration:underline wavy var(--accent);text-decoration-thickness:3px;text-underline-offset:8px}
+header p{margin:0;color:var(--muted)}
+section{background:var(--surface);border:1px solid var(--line);border-radius:26px 26px 26px 6px;padding:22px}
+.right section:nth-child(2){border-radius:6px 26px 26px 26px}
+h2{margin:0 0 14px;font-size:1.05rem;font-weight:600}
+.timer{display:flex;flex-direction:column;align-items:center;gap:16px}
+.modes{display:flex;gap:6px;background:var(--bg);padding:4px;border-radius:999px}
+.modes button{border:0;background:none;color:var(--muted);font:inherit;font-weight:600;padding:6px 14px;border-radius:999px;cursor:pointer}
+.modes button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+.ring{position:relative;width:min(280px,72vw);aspect-ratio:1}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:12}
+.track{stroke:var(--line)}
+.bar{stroke:var(--accent);stroke-linecap:round;transition:stroke-dashoffset .9s linear,stroke .3s}
+.ring.break .bar{stroke:var(--break)}
+.readout{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.time{font-size:3.4rem;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.now{color:var(--muted);font-size:.9rem;max-width:80%;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row{display:flex;gap:10px}
+button.btn{font:inherit;font-weight:600;border-radius:12px;padding:10px 22px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+button.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+form{display:flex;gap:8px;margin-bottom:12px}
+input[type=text]{flex:1;min-width:0;font:inherit;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;border:1px solid transparent}
+li.active{border-color:var(--accent);background:var(--bg)}
+li.done .t{text-decoration:line-through;color:var(--muted)}
+.t{flex:1;overflow-wrap:anywhere}
+.mini{font:inherit;font-size:.82rem;border:1px solid var(--line);background:none;color:var(--muted);border-radius:8px;padding:2px 8px;cursor:pointer}
+.empty{color:var(--muted);margin:0}
+.stats{display:flex;gap:24px;margin-bottom:16px;flex-wrap:wrap}
+.stat b{display:block;font-size:1.8rem;font-weight:800;letter-spacing:-.02em}
+.stat span{color:var(--muted);font-size:.88rem}
+.week{display:flex;align-items:flex-end;gap:8px;height:110px}
+.col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;font-size:.78rem;color:var(--muted)}
+.col i{display:block;width:100%;background:var(--accent);border-radius:6px 6px 2px 2px;min-height:3px;opacity:.85}
+.col.today i{background:var(--ok);opacity:1}
+.right{display:grid;gap:20px;align-content:start}
+.settings{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;align-items:center;font-size:.88rem;color:var(--muted)}
+.settings input[type=number]{width:58px;font:inherit;padding:4px 6px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.hint{margin:0;font-size:.82rem;color:var(--muted)}
+.badge{font-size:.8rem;color:var(--muted);white-space:nowrap}
+.goalrow{display:flex;align-items:center;gap:10px;margin-bottom:16px;font-size:.85rem;color:var(--muted)}
+.gbar{flex:1;height:8px;background:var(--bg);border-radius:99px;overflow:hidden}
+.gbar i{display:block;height:100%;width:0;background:var(--ok);transition:width .5s}
+footer{grid-column:1/-1;color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+<main>
+<header><h1>Tideline</h1><p>Twenty-five minutes on, then actually stop.</p></header>
+
+<section class="timer" aria-label="Focus timer">
+  <div class="modes" role="group" aria-label="Timer mode">
+    <button data-m="focus" aria-pressed="true">Focus</button>
+    <button data-m="short" aria-pressed="false">Break</button>
+    <button data-m="long" aria-pressed="false">Long break</button>
+  </div>
+  <div class="ring" id="ring">
+    <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="track" cx="60" cy="60" r="52"/><circle class="bar" id="bar" cx="60" cy="60" r="52"/></svg>
+    <div class="readout"><div class="time" id="time" role="timer" aria-live="off">25:00</div><div class="now" id="now">Pick a task to focus on</div></div>
+  </div>
+  <div class="row"><button class="btn primary" id="go">Start</button><button class="btn" id="reset">Reset</button></div>
+  <div class="settings"><label>Focus <input type="number" id="lf" min="1" max="120" value="25"></label><label>Break <input type="number" id="ls" min="1" max="60" value="5"></label><label>Long <input type="number" id="ll" min="1" max="90" value="15"></label><label><input type="checkbox" id="snd" checked> Sound</label></div>
+  <p class="hint">Minutes per mode. Press space to start or pause.</p>
+</section>
+
+<div class="right">
+<section aria-label="Tasks">
+  <h2>Tasks</h2>
+  <form id="f"><input type="text" id="in" placeholder="Next thing to get done..." aria-label="New task" maxlength="80" required><button class="btn primary" type="submit">Add task</button></form>
+  <ul id="list"></ul>
+</section>
+<section aria-label="Stats">
+  <h2>How the week is going</h2>
+  <div class="stats">
+    <div class="stat"><b id="sMin">0</b><span>minutes today</span></div>
+    <div class="stat"><b id="sSes">0</b><span>sessions today</span></div>
+    <div class="stat"><b id="sDone">0</b><span>tasks done</span></div>
+    <div class="stat"><b id="sStreak">0</b><span>day streak</span></div>
+  </div>
+  <div class="goalrow"><span>Daily goal</span><div class="gbar"><i id="gfill"></i></div><span id="gtxt">0 / 100 min</span></div>
+  <div class="week" id="week"></div>
+</section>
+</div>
+<footer>Data stays in your browser.</footer>
+</main>
+<script>
+(function(){
+var LEN={focus:25*60,short:5*60,long:15*60},C=2*Math.PI*52;
+var S={tasks:[],active:null,log:{},len:{focus:25,short:5,long:15},sound:true,goal:100};
+try{var raw=localStorage.getItem("tideline");if(raw)S=Object.assign(S,JSON.parse(raw))}catch(e){}
+function save(){try{localStorage.setItem("tideline",JSON.stringify(S))}catch(e){}}
+var $=function(i){return document.getElementById(i)};
+function applyLen(){LEN.focus=S.len.focus*60;LEN.short=S.len.short*60;LEN.long=S.len.long*60}
+applyLen();
+function beep(){if(!S.sound)return;try{var c=new (window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.frequency.value=660;g.gain.setValueAtTime(.2,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+1);o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+1)}catch(e){}}
+var mode="focus",left=LEN.focus,timer=null,endAt=0;
+var bar=$("bar");bar.style.strokeDasharray=C;
+function key(d){d=d||new Date();return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate()}
+function fmt(s){var m=Math.floor(s/60),r=s%60;return (m<10?"0":"")+m+":"+(r<10?"0":"")+r}
+function draw(){
+  $("time").textContent=fmt(left);
+  bar.style.strokeDashoffset=C*(1-left/LEN[mode]);
+  $("ring").className="ring"+(mode==="focus"?"":" break");
+  document.title=(timer?fmt(left)+" · ":"")+"Tideline";
+  var a=S.tasks.find(function(t){return t.id===S.active});
+  $("now").textContent=mode!=="focus"?"Take a real break":(a?a.text:"Pick a task to focus on");
+  $("go").textContent=timer?"Pause":"Start";
+}
+function setMode(m){stop();mode=m;left=LEN[m];document.querySelectorAll(".modes button").forEach(function(b){b.setAttribute("aria-pressed",b.dataset.m===m)});draw()}
+function stop(){if(timer){clearInterval(timer);timer=null}}
+function tick(){
+  left=Math.max(0,Math.round((endAt-Date.now())/1000));
+  if(left<=0){
+    stop();
+    if(mode==="focus"){var k=key(),d=S.log[k]||{min:0,ses:0};d.min+=S.len.focus;d.ses+=1;S.log[k]=d;var at=S.tasks.find(function(t){return t.id===S.active});if(at)at.ses=(at.ses||0)+1;save();render()}
+    beep();try{navigator.vibrate&&navigator.vibrate(200)}catch(e){}
+    setMode(mode==="focus"?"short":"focus");return;
+  }
+  draw();
+}
+$("go").onclick=function(){
+  if(timer){stop();draw();return}
+  endAt=Date.now()+left*1000;timer=setInterval(tick,500);draw();
+};
+$("reset").onclick=function(){setMode(mode)};
+[["lf","focus"],["ls","short"],["ll","long"]].forEach(function(p){var el=$(p[0]);el.value=S.len[p[1]];el.onchange=function(){var v=Math.min(+el.max,Math.max(1,parseInt(el.value)||S.len[p[1]]));el.value=v;S.len[p[1]]=v;save();applyLen();if(!timer){left=LEN[mode];draw()}}});
+$("snd").checked=S.sound;$("snd").onchange=function(){S.sound=$("snd").checked;save()};
+document.addEventListener("keydown",function(e){if(e.code==="Space"&&!/INPUT|BUTTON/.test(e.target.tagName)){e.preventDefault();$("go").click()}});
+document.querySelectorAll(".modes button").forEach(function(b){b.onclick=function(){setMode(b.dataset.m)}});
+$("f").onsubmit=function(e){e.preventDefault();var v=$("in").value.trim();if(!v)return;
+  var t={id:Date.now(),text:v,done:false};S.tasks.push(t);if(!S.active)S.active=t.id;$("in").value="";save();render()};
+function render(){
+  var ul=$("list");ul.innerHTML="";
+  if(!S.tasks.length){var p=document.createElement("p");p.className="empty";p.textContent="Nothing here yet. Add the first thing you need to finish.";ul.appendChild(p)}
+  S.tasks.forEach(function(t){
+    var li=document.createElement("li");li.className=(t.id===S.active?"active ":"")+(t.done?"done":"");
+    var cb=document.createElement("input");cb.type="checkbox";cb.checked=t.done;cb.setAttribute("aria-label","Mark done: "+t.text);
+    cb.onchange=function(){t.done=cb.checked;if(t.done&&S.active===t.id)S.active=null;save();render()};
+    var s=document.createElement("span");s.className="t";s.textContent=t.text;
+    li.appendChild(cb);li.appendChild(s);
+    if(t.ses){var n=document.createElement("span");n.className="badge";n.textContent=t.ses+(t.ses===1?" session":" sessions");li.appendChild(n)}
+    if(!t.done&&t.id!==S.active){var f=document.createElement("button");f.className="mini";f.textContent="Focus";f.onclick=function(){S.active=t.id;save();render()};li.appendChild(f)}
+    var x=document.createElement("button");x.className="mini";x.textContent="Delete";x.setAttribute("aria-label","Delete "+t.text);
+    x.onclick=function(){S.tasks=S.tasks.filter(function(q){return q.id!==t.id});if(S.active===t.id)S.active=null;save();render()};
+    li.appendChild(x);ul.appendChild(li);
+  });
+  var td=S.log[key()]||{min:0,ses:0};
+  $("sMin").textContent=td.min;$("sSes").textContent=td.ses;
+  $("sDone").textContent=S.tasks.filter(function(t){return t.done}).length;
+  var g=Math.min(100,Math.round(td.min/S.goal*100));$("gfill").style.width=g+"%";$("gtxt").textContent=td.min+" / "+S.goal+" min";
+  var st=0,dd=new Date();if(!(S.log[key(dd)]||{}).min)dd.setDate(dd.getDate()-1);while((S.log[key(dd)]||{}).min>0){st++;dd.setDate(dd.getDate()-1)}$("sStreak").textContent=st;
+  var w=$("week");w.innerHTML="";var vals=[],days=[];
+  for(var i=6;i>=0;i--){var d=new Date();d.setDate(d.getDate()-i);days.push(d);vals.push((S.log[key(d)]||{min:0}).min)}
+  var mx=Math.max.apply(null,vals.concat([25]));
+  days.forEach(function(d,i){
+    var c=document.createElement("div");c.className="col"+(i===6?" today":"");
+    var b=document.createElement("i");b.style.height=Math.round(vals[i]/mx*80)+"%";b.title=vals[i]+" min";
+    var l=document.createElement("span");l.textContent=d.toLocaleDateString("en-US",{weekday:"short"}).slice(0,2);
+    c.appendChild(b);c.appendChild(l);w.appendChild(c);
+  });
+  draw();
+}
+render();
+})();
+</script>
+</body>
+</html>
