@@ -21,6 +21,7 @@ header p{margin:0;color:var(--muted)}
 section{background:var(--surface);border:1px solid var(--line);border-radius:26px 26px 26px 6px;padding:22px}
 .right section:nth-child(2){border-radius:6px 26px 26px 26px}
 h2{margin:0 0 14px;font-size:1.05rem;font-weight:600}
+h3{margin:18px 0 8px;font-size:.92rem;font-weight:600;color:var(--muted)}
 .timer{display:flex;flex-direction:column;align-items:center;gap:16px}
 .modes{display:flex;gap:6px;background:var(--bg);padding:4px;border-radius:999px}
 .modes button{border:0;background:none;color:var(--muted);font:inherit;font-weight:600;padding:6px 14px;border-radius:999px;cursor:pointer}
@@ -54,6 +55,13 @@ li.done .t{text-decoration:line-through;color:var(--muted)}
 .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;font-size:.78rem;color:var(--muted)}
 .col i{display:block;width:100%;background:var(--accent);border-radius:6px 6px 2px 2px;min-height:3px;opacity:.85}
 .col.today i{background:var(--ok);opacity:1}
+.heat{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.heat i{aspect-ratio:1;border-radius:5px;background:var(--bg);border:1px solid var(--line)}
+.heat i.l1{background:color-mix(in srgb,var(--accent) 25%,var(--bg))}
+.heat i.l2{background:color-mix(in srgb,var(--accent) 50%,var(--bg))}
+.heat i.l3{background:color-mix(in srgb,var(--accent) 75%,var(--bg))}
+.heat i.l4{background:var(--accent)}
+.heat i.today{outline:2px solid var(--ok);outline-offset:1px}
 .right{display:grid;gap:20px;align-content:start}
 .settings{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;align-items:center;font-size:.88rem;color:var(--muted)}
 .settings input[type=number]{width:58px;font:inherit;padding:4px 6px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
@@ -62,7 +70,11 @@ li.done .t{text-decoration:line-through;color:var(--muted)}
 .goalrow{display:flex;align-items:center;gap:10px;margin-bottom:16px;font-size:.85rem;color:var(--muted)}
 .gbar{flex:1;height:8px;background:var(--bg);border-radius:99px;overflow:hidden}
 .gbar i{display:block;height:100%;width:0;background:var(--ok);transition:width .5s}
-footer{grid-column:1/-1;color:var(--muted);font-size:.85rem}
+footer{grid-column:1/-1;color:var(--muted);font-size:.85rem;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,30px);opacity:0;pointer-events:none;background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:14px;max-width:min(92vw,420px);text-align:center;font-weight:600;transition:opacity .25s,transform .25s}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
@@ -80,8 +92,9 @@ footer{grid-column:1/-1;color:var(--muted);font-size:.85rem}
     <div class="readout"><div class="time" id="time" role="timer" aria-live="off">25:00</div><div class="now" id="now">Pick a task to focus on</div></div>
   </div>
   <div class="row"><button class="btn primary" id="go">Start</button><button class="btn" id="reset">Reset</button></div>
-  <div class="settings"><label>Focus <input type="number" id="lf" min="1" max="120" value="25"></label><label>Break <input type="number" id="ls" min="1" max="60" value="5"></label><label>Long <input type="number" id="ll" min="1" max="90" value="15"></label><label><input type="checkbox" id="snd" checked> Sound</label></div>
-  <p class="hint">Minutes per mode. Press space to start or pause.</p>
+  <p class="hint" id="cycle"></p>
+  <div class="settings"><label>Focus <input type="number" id="lf" min="1" max="120" value="25"></label><label>Break <input type="number" id="ls" min="1" max="60" value="5"></label><label>Long <input type="number" id="ll" min="1" max="90" value="15"></label><label>Goal <input type="number" id="lg" min="10" max="600" step="10" value="100"></label><label><input type="checkbox" id="snd" checked> Sound</label><label><input type="checkbox" id="ntf"> Notify</label></div>
+  <p class="hint">Minutes per mode and daily goal. Press space to start or pause.</p>
 </section>
 
 <div class="right">
@@ -100,20 +113,27 @@ footer{grid-column:1/-1;color:var(--muted);font-size:.85rem}
   </div>
   <div class="goalrow"><span>Daily goal</span><div class="gbar"><i id="gfill"></i></div><span id="gtxt">0 / 100 min</span></div>
   <div class="week" id="week"></div>
+  <h3>Last 5 weeks</h3>
+  <div class="heat" id="heat" role="img" aria-label="Focus heatmap for the last 35 days"></div>
 </section>
 </div>
-<footer>Data stays in your browser.</footer>
+<footer><span>Data stays in your browser.</span>
+<span class="tools"><button class="mini" id="exp">Export data</button><button class="mini" id="imp">Import data</button><button class="mini" id="demo">Load sample data</button><button class="mini" id="clr">Clear data</button><input type="file" id="file" accept="application/json" hidden></span></footer>
 </main>
+<div id="toast" role="status" aria-live="polite"></div>
 <script>
 (function(){
 var LEN={focus:25*60,short:5*60,long:15*60},C=2*Math.PI*52;
-var S={tasks:[],active:null,log:{},len:{focus:25,short:5,long:15},sound:true,goal:100};
+var S={tasks:[],active:null,log:{},len:{focus:25,short:5,long:15},sound:true,goal:100,notify:false,cyc:0};
 try{var raw=localStorage.getItem("tideline");if(raw)S=Object.assign(S,JSON.parse(raw))}catch(e){}
 function save(){try{localStorage.setItem("tideline",JSON.stringify(S))}catch(e){}}
 var $=function(i){return document.getElementById(i)};
 function applyLen(){LEN.focus=S.len.focus*60;LEN.short=S.len.short*60;LEN.long=S.len.long*60}
 applyLen();
 function beep(){if(!S.sound)return;try{var c=new (window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.frequency.value=660;g.gain.setValueAtTime(.2,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+1);o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+1)}catch(e){}}
+var tt=null;
+function toast(m){var t=$("toast");t.textContent=m;t.className="show";clearTimeout(tt);tt=setTimeout(function(){t.className=""},5000)}
+function notify(m){if(!S.notify||!document.hidden)return;try{new Notification("Tideline",{body:m})}catch(e){}}
 var mode="focus",left=LEN.focus,timer=null,endAt=0;
 var bar=$("bar");bar.style.strokeDasharray=C;
 function key(d){d=d||new Date();return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate()}
@@ -126,16 +146,25 @@ function draw(){
   var a=S.tasks.find(function(t){return t.id===S.active});
   $("now").textContent=mode!=="focus"?"Take a real break":(a?a.text:"Pick a task to focus on");
   $("go").textContent=timer?"Pause":"Start";
+  var n=S.cyc%4;$("cycle").textContent="Session "+(n+1)+" of 4 before a long break";
 }
 function setMode(m){stop();mode=m;left=LEN[m];document.querySelectorAll(".modes button").forEach(function(b){b.setAttribute("aria-pressed",b.dataset.m===m)});draw()}
 function stop(){if(timer){clearInterval(timer);timer=null}}
 function tick(){
   left=Math.max(0,Math.round((endAt-Date.now())/1000));
   if(left<=0){
-    stop();
-    if(mode==="focus"){var k=key(),d=S.log[k]||{min:0,ses:0};d.min+=S.len.focus;d.ses+=1;S.log[k]=d;var at=S.tasks.find(function(t){return t.id===S.active});if(at)at.ses=(at.ses||0)+1;save();render()}
-    beep();try{navigator.vibrate&&navigator.vibrate(200)}catch(e){}
-    setMode(mode==="focus"?"short":"focus");return;
+    stop();var nxt,msg;
+    if(mode==="focus"){
+      var k=key(),d=S.log[k]||{min:0,ses:0};d.min+=S.len.focus;d.ses+=1;S.log[k]=d;
+      var at=S.tasks.find(function(t){return t.id===S.active});
+      if(at){at.ses=(at.ses||0)+1;at.min=(at.min||0)+S.len.focus}
+      S.cyc=(S.cyc||0)+1;nxt=S.cyc%4===0?"long":"short";
+      var rem=S.goal-d.min;
+      msg="Session "+d.ses+" done. "+(rem>0?rem+" min to your daily goal.":"Daily goal reached!");
+      save();render();
+    }else{nxt="focus";msg="Break over. Ready when you are."}
+    toast(msg);notify(msg);beep();try{navigator.vibrate&&navigator.vibrate(200)}catch(e){}
+    setMode(nxt);return;
   }
   draw();
 }
@@ -145,11 +174,38 @@ $("go").onclick=function(){
 };
 $("reset").onclick=function(){setMode(mode)};
 [["lf","focus"],["ls","short"],["ll","long"]].forEach(function(p){var el=$(p[0]);el.value=S.len[p[1]];el.onchange=function(){var v=Math.min(+el.max,Math.max(1,parseInt(el.value)||S.len[p[1]]));el.value=v;S.len[p[1]]=v;save();applyLen();if(!timer){left=LEN[mode];draw()}}});
+$("lg").value=S.goal;$("lg").onchange=function(){var v=Math.min(600,Math.max(10,parseInt($("lg").value)||S.goal));$("lg").value=v;S.goal=v;save();render()};
 $("snd").checked=S.sound;$("snd").onchange=function(){S.sound=$("snd").checked;save()};
+$("ntf").checked=S.notify&&window.Notification&&Notification.permission==="granted";
+$("ntf").onchange=function(){
+  if(!$("ntf").checked){S.notify=false;save();return}
+  if(!window.Notification){$("ntf").checked=false;toast("This browser doesn't support notifications.");return}
+  Notification.requestPermission().then(function(p){S.notify=p==="granted";$("ntf").checked=S.notify;if(!S.notify)toast("Notifications are blocked. Allow them in your browser settings.");save()})
+};
 document.addEventListener("keydown",function(e){if(e.code==="Space"&&!/INPUT|BUTTON/.test(e.target.tagName)){e.preventDefault();$("go").click()}});
 document.querySelectorAll(".modes button").forEach(function(b){b.onclick=function(){setMode(b.dataset.m)}});
 $("f").onsubmit=function(e){e.preventDefault();var v=$("in").value.trim();if(!v)return;
   var t={id:Date.now(),text:v,done:false};S.tasks.push(t);if(!S.active)S.active=t.id;$("in").value="";save();render()};
+$("exp").onclick=function(){
+  try{var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:"application/json"}));a.download="tideline-backup-"+key()+".json";document.body.appendChild(a);a.click();a.remove();toast("Backup downloaded.")}catch(e){toast("Couldn't export. Try a different browser.")}
+};
+$("imp").onclick=function(){$("file").click()};
+$("file").onchange=function(){
+  var f=$("file").files[0];if(!f)return;var r=new FileReader();
+  r.onload=function(){try{var d=JSON.parse(r.result);if(!Array.isArray(d.tasks)||typeof d.log!=="object"||!d.len)throw 0;
+    if(!confirm("Replace your current data with this backup?"))return;S=Object.assign(S,d);save();location.reload()}
+    catch(e){toast("That file isn't a Tideline backup.")}};
+  r.readAsText(f);$("file").value="";
+};
+$("demo").onclick=function(){
+  if((S.tasks.length||Object.keys(S.log).length)&&!confirm("Replace your current data with sample data?"))return;
+  var log={},now=Date.now();
+  for(var i=0;i<35;i++){if(i%7===3||i%11===5)continue;var d=new Date();d.setDate(d.getDate()-i);var m=((i*37)%5+1)*25;log[key(d)]={min:m,ses:m/25}}
+  S.log=log;S.cyc=0;
+  S.tasks=[{id:now,text:"Write the project README",done:false,ses:6,min:150},{id:now+1,text:"Record the demo video",done:false,ses:2,min:50},{id:now+2,text:"Fix mobile layout",done:true,ses:3,min:75}];
+  S.active=now;save();render();toast("Sample data loaded.")
+};
+$("clr").onclick=function(){if(!confirm("Delete all tasks and focus history? This can't be undone."))return;try{localStorage.removeItem("tideline")}catch(e){}location.reload()};
 function render(){
   var ul=$("list");ul.innerHTML="";
   if(!S.tasks.length){var p=document.createElement("p");p.className="empty";p.textContent="Nothing here yet. Add the first thing you need to finish.";ul.appendChild(p)}
@@ -159,7 +215,7 @@ function render(){
     cb.onchange=function(){t.done=cb.checked;if(t.done&&S.active===t.id)S.active=null;save();render()};
     var s=document.createElement("span");s.className="t";s.textContent=t.text;
     li.appendChild(cb);li.appendChild(s);
-    if(t.ses){var n=document.createElement("span");n.className="badge";n.textContent=t.ses+(t.ses===1?" session":" sessions");li.appendChild(n)}
+    if(t.ses){var n=document.createElement("span");n.className="badge";n.textContent=t.ses+(t.ses===1?" session":" sessions")+" · "+(t.min||0)+" min";li.appendChild(n)}
     if(!t.done&&t.id!==S.active){var f=document.createElement("button");f.className="mini";f.textContent="Focus";f.onclick=function(){S.active=t.id;save();render()};li.appendChild(f)}
     var x=document.createElement("button");x.className="mini";x.textContent="Delete";x.setAttribute("aria-label","Delete "+t.text);
     x.onclick=function(){S.tasks=S.tasks.filter(function(q){return q.id!==t.id});if(S.active===t.id)S.active=null;save();render()};
@@ -179,6 +235,12 @@ function render(){
     var l=document.createElement("span");l.textContent=d.toLocaleDateString("en-US",{weekday:"short"}).slice(0,2);
     c.appendChild(b);c.appendChild(l);w.appendChild(c);
   });
+  var h=$("heat");h.innerHTML="";
+  for(var j=34;j>=0;j--){
+    var hd=new Date();hd.setDate(hd.getDate()-j);var m=(S.log[key(hd)]||{min:0}).min,r=m/S.goal;
+    var cell=document.createElement("i");cell.className=(m<=0?"":r<.34?"l1":r<.67?"l2":r<1?"l3":"l4")+(j===0?" today":"");
+    cell.title=hd.toLocaleDateString("en-US",{month:"short",day:"numeric"})+": "+m+" min";h.appendChild(cell);
+  }
   draw();
 }
 render();
